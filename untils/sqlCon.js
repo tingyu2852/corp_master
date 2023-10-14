@@ -11,7 +11,7 @@ const config = {
     connectionLimit: 10 // 创建一个连接池
   };
   //该配置是服务器的数据库
-  const seveRconfig = {
+  const severConfig = {
     host: '42.192.193.249',
     user: 'yu',
     password: 'Tingyu2852',
@@ -25,7 +25,7 @@ const config = {
   function createConnectionPool() {
     let connectionPool = null;
     if (!connectionPool) {
-      connectionPool = mysql2.createPool(config).promise();
+      connectionPool = mysql2.createPool(severConfig).promise();
     }
     return connectionPool;
   }

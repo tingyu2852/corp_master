@@ -21,9 +21,11 @@ const { json } = require('express/lib/response');
 const jwt = require('./untils/jwt');
 const { log } = require('debug/src/browser');
 const { linkSql } = require('./untils/sql');
-
+//const bodyParser = require('body')
+const bodyParser = require('body-parser')
 var app = express();
-
+app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.urlencoded({ limit: '2mb', extended: true }));
 // const delayMiddleware = (req, res, next) => {
 //   setTimeout(next, 2000);
 // };

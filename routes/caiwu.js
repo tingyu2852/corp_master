@@ -193,12 +193,12 @@ router.delete('/corp', async (req, res) => {
         if (data1.errno == 1451) {
             return res.send({ code: 20001, message: '该信息绑定有子信息，请先删除子信息' })
         }
-        if (!data1.affectedRows) {
-            if (delList.length == 1) {
-                return res.send({ code: 20001, message: '该信息绑定有子信息或不存在，请先删除子信息' })
-            }
-            return res.send({ code: 20001, message: '无数据受到影响或存在子信息绑定情况' })
-        }
+        // if (!data1.affectedRows) {
+        //     if (delList.length == 1) {
+        //         return res.send({ code: 20001, message: '该信息绑定有子信息或不存在，请先删除子信息' })
+        //     }
+        //     return res.send({ code: 20001, message: '无数据受到影响或存在子信息绑定情况' })
+        // }
 
         res.send({ code: 20000, message: '成功' })
     } catch (error) {
