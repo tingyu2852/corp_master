@@ -25,7 +25,7 @@ const config = {
   function createConnectionPool() {
     let connectionPool = null;
     if (!connectionPool) {
-      connectionPool = mysql2.createPool(severConfig).promise();
+      connectionPool = mysql2.createPool(config).promise();
     }
     return connectionPool;
   }

@@ -17,8 +17,11 @@ async function computrRepay(everyday_inter) {
     }
     for (let j = 0; j < everyday_inter.length; j++) {
         if (j !== 0) {
-            everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal + everyday_inter[j - 1].mt_num - everyday_inter[j - 1].repay_plan
+            //everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal + everyday_inter[j - 1].mt_num - everyday_inter[j - 1].repay_plan
+            everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal- everyday_inter[j - 1].repay_plan+everyday_inter[j].mt_num
 
+        }else{
+            everyday_inter[j].princaipal = everyday_inter[j].mt_num
         }
         everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
     }
@@ -72,92 +75,7 @@ async function updateRate(everyday_inter) {
         }
     }
 
-    return
-    let list = await linkSql(`SELECT
-    rate_info.rate_id,
-    rate_info.date,
-    rate_info.rate,
-    rate_info.remark
-    FROM
-    rate_info
-    ORDER BY
-    rate_info.date ASC
-    
-    `)
-    if (loan_id) {
-        await linkSql('', '', true, (async (sql) => {
-            try {
-                await sql.beginTransaction();
-                if (list.length === 1) {
-                    await sql.execute(`UPDATE repay_info SET rate=${list[0].rate} WHERE repay_info.date >= '${list[0].date}' AND repay_info.loan_id = ${loan_id}`)
-                } else if (list.length !== 0) {
-                    for (let i = 0; i < list.length; i++) {
-
-                        if (i === list.length - 1) {
-                            await sql.execute(`UPDATE repay_info SET rate=${list[i].rate} WHERE repay_info.date >= '${list[i].date}' AND repay_info.loan_id = ${loan_id}`)
-                        } else {
-                            await sql.execute(`UPDATE repay_info SET rate=${list[i].rate} WHERE repay_info.date >= '${list[i].date}' AND repay_info.date < '${list[i + 1].date}' AND repay_info.loan_id = ${loan_id}`)
-                        }
-                    }
-
-                    await sql.commit()
-                    computrRepay(loan_id)
-                } else {
-
-                    return false
-                }
-
-            } catch (error) {
-                await sql.rollback(err => {
-                    err
-                })
-                console.log(error);
-            }
-
-
-        }))
-        computrRepay('plan', loan_id)
-        return
-    } else {
-        //let data = [{ date: '2023-01-01', rate: 0.003 }, { date: '2023-05-01', rate: 0.004 }, { date: '2023-05-20', rate: 0.001 }, { date: '2023-07-15', rate: 0.02 }, { date: '2023-09-15', rate: 0.03 }, { date: '2024-07-15', rate: 0.04 }]
-        console.log(dayjs().format('YYYY-MM-DD HH:mm:ss.SSS'));
-
-        //UPDATE repay_info SET rate=${list[i].rate} WHERE repay_id = ${data[j].repay_id}
-        await linkSql('', '', true, (async (sql) => {
-            try {
-                await sql.beginTransaction();
-                if (list.length === 1) {
-                    await sql.execute(`UPDATE repay_info SET rate=${list[0].rate} WHERE repay_info.date >= '${list[0].date}'`)
-                } else if (list.length !== 0) {
-                    for (let i = 0; i < list.length; i++) {
-
-                        if (i === list.length - 1) {
-                            await sql.execute(`UPDATE repay_info SET rate=${list[i].rate} WHERE repay_info.date >= '${list[i].date}'`)
-                        } else {
-                            await sql.execute(`UPDATE repay_info SET rate=${list[i].rate} WHERE repay_info.date >= '${list[i].date}' AND repay_info.date < '${list[i + 1].date}'`)
-                        }
-                    }
-
-                } else {
-                    return
-                }
-                await sql.execute(`UPDATE loan_info SET is_inter = 0`)
-                await sql.commit()
-
-            } catch (error) {
-                await sql.rollback(err => {
-                    console.log(err);
-                })
-                console.log(err);
-                return false
-            }
-
-        }))
-        //console.log(dayjs().format('YYYY-MM-DD HH:mm:ss.SSS'));
-
-        console.log(dayjs().format('YYYY-MM-DD HH:mm:ss.SSS'));
-    }
-
+   
 
 }
 
@@ -299,23 +217,11 @@ async function updateInfo(everyday_inter, rate, is_float_rate) {
 
 }
 
-
+//计算当前时间已还本金额
 async function repayTotal(everyday_inter){
     if (!Array.isArray(everyday_inter)) {
         throw new Error('请传入一个数组')
     }
-    //let data = await linkSql(finaStr.everyday,[loan_id])
-   // let everyday_inter = data[0].everyday_inter
-   // console.log(everyday_inter);
-
-//    const repay_total =  everyday_inter.reduce((total,item)=>{
-       
-//        if(dayjs().isBefore(dayjs(item.date))){
-//         return  total + parseFloat(item.repay_plan)
-//        }else{
-
-//        }
-//     },0)
     let repay_total = 0
     for(let i = 0;i<everyday_inter.length;i++){
         if(dayjs(everyday_inter[i].date).isBefore(dayjs())){

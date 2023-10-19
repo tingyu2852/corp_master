@@ -17,6 +17,7 @@ var caiwuRouter = require('./routes/caiwu')
 var eplRouter = require('./routes/epl')
 var finaRouter = require('./routes/fina');
 var aclRouter = require('./routes/acl');
+const enterRouter = require('./routes/enter')
 const { json } = require('express/lib/response');
 const jwt = require('./untils/jwt');
 const { log } = require('debug/src/browser');
@@ -113,6 +114,7 @@ app.use('/master/caiwu',caiwuRouter)
 app.use('/master/epl',eplRouter)
 app.use('/master/fina',finaRouter)
 app.use('/master/acl',aclRouter)
+app.use('/master/enter',enterRouter)
 
 
 // catch 404 and forward to error handler

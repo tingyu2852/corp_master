@@ -674,10 +674,13 @@ async function updateMt(sql, loan_id) {
                 }
             }
             if (j !== 0) {
-                everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal + everyday_inter[j - 1].mt_num - everyday_inter[j - 1].repay_plan
-
+                //everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal + everyday_inter[j - 1].mt_num - everyday_inter[j - 1].repay_plan
+                everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal- everyday_inter[j - 1].repay_plan+everyday_inter[j].mt_num
+    
+            }else{
+                everyday_inter[j].princaipal = everyday_inter[j].mt_num
             }
-            everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear ? 366 : 365)).toFixed(2))
+            everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
 
 
         }
