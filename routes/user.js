@@ -84,4 +84,8 @@ router.post('/test', (req, res, next) => {
     res.send({ code: 200, str: '123' })
 })
 
+router.post('/logout', (req, res, next) => {
+    res.send({ code: 20000, message:'退出成功' })
+})
+
 module.exports = router;

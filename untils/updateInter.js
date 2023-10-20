@@ -18,9 +18,9 @@ async function computrRepay(everyday_inter) {
     for (let j = 0; j < everyday_inter.length; j++) {
         if (j !== 0) {
             //everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal + everyday_inter[j - 1].mt_num - everyday_inter[j - 1].repay_plan
-            everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal- everyday_inter[j - 1].repay_plan+everyday_inter[j].mt_num
+            everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal - everyday_inter[j - 1].repay_plan + everyday_inter[j].mt_num
 
-        }else{
+        } else {
             everyday_inter[j].princaipal = everyday_inter[j].mt_num
         }
         everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
@@ -54,11 +54,15 @@ async function updateRate(everyday_inter) {
             if (list1.length === 1) {
                 if (dayjs(everyday_inter[j].date).isSameOrAfter(dayjs(list1[0].date))) {
                     everyday_inter[j].rate = parseFloat((parseFloat(everyday_inter[j].rate) + parseFloat(list1[0].rate)).toFixed(5))
+                    cur = j + 1
                 }
+                
             } else {
                 if (i === list1.length - 1) {
                     if (dayjs(everyday_inter[j].date).isSameOrAfter(dayjs(list1[0].date))) {
+                        //console.log(everyday_inter[j].rate);
                         everyday_inter[j].rate = parseFloat((parseFloat(everyday_inter[j].rate) + parseFloat(list1[i].rate)).toFixed(5))
+                        cur = j + 1
                         //console.log(parseFloat((parseFloat(everyday_inter[j].rate) + parseFloat(list1[i].rate)).toFixed(4)));
                     }
                 } else {
@@ -68,6 +72,7 @@ async function updateRate(everyday_inter) {
                     if (dayjs(everyday_inter[j].date).isBetween(dayjs(list1[i].date), dayjs(list1[i + 1].date), '[)')) {
                         everyday_inter[j].rate = parseFloat((parseFloat(everyday_inter[j].rate) + parseFloat(list1[i].rate)).toFixed(5))
                         // console.log(everyday_inter[j].rate);
+                        cur = j + 1
                     }
                 }
             }
@@ -75,7 +80,7 @@ async function updateRate(everyday_inter) {
         }
     }
 
-   
+
 
 }
 
@@ -149,7 +154,7 @@ async function updateInfo(everyday_inter, rate, is_float_rate) {
     if (!Array.isArray(everyday_inter)) {
         throw new Error('请传入一个数组')
     }
-    console.log(rate,is_float_rate);
+    console.log(rate, is_float_rate);
     if (is_float_rate === 1) {
         let list1 = await linkSql(`SELECT
         rate_info.rate_id,
@@ -163,53 +168,53 @@ async function updateInfo(everyday_inter, rate, is_float_rate) {
         
         `)
         let cur = 0
-        let ab=0
+        let ab = 0
         //console.log(list1);
         for (let i = 0; i < list1.length; i++) {
             // console.log(list1[i].date);
             for (let j = cur; j < everyday_inter.length; j++) {
                 //everyday_inter[j].rate = rate
-                
+
                 if (list1.length === 1) {
                     if (dayjs(everyday_inter[j].date).isSameOrAfter(dayjs(list1[0].date))) {
                         everyday_inter[j].rate = parseFloat((parseFloat(rate) + parseFloat(list1[0].rate)).toFixed(5))
                         everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
-                        cur=j+1
-                       ab++
+                        cur = j + 1
+                        ab++
                     }
                 } else {
-                   
+
                     if (i === list1.length - 1) {
                         if (dayjs(everyday_inter[j].date).isSameOrAfter(dayjs(list1[i].date))) {
                             everyday_inter[j].rate = parseFloat((parseFloat(rate) + parseFloat(list1[i].rate)).toFixed(5))
                             everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
                             ab++
-                            cur=j+1
-                            
+                            cur = j + 1
+
                         }
-                        
+
                     } else {
                         if (dayjs(everyday_inter[j].date).isBetween(dayjs(list1[i].date), dayjs(list1[i + 1].date), '[)')) {
                             everyday_inter[j].rate = parseFloat((parseFloat(rate) + parseFloat(list1[i].rate)).toFixed(5))
                             everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
-                            cur=j+1
+                            cur = j + 1
                             ab++
-                           
+
                         }
-                       
+
                     }
                 }
-                
-               // everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
-                
+
+                // everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
+
             }
         }
-       
+
         updatePlanInter(everyday_inter)
     } else {
         for (let j = 0; j < everyday_inter.length; j++) {
             everyday_inter[j].rate = rate
-            
+
             everyday_inter[j].inter_plan = parseFloat(((everyday_inter[j].princaipal * parseFloat(everyday_inter[j].rate)) / (dayjs(everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
         }
         updatePlanInter(everyday_inter)
@@ -218,19 +223,98 @@ async function updateInfo(everyday_inter, rate, is_float_rate) {
 }
 
 //计算当前时间已还本金额
-async function repayTotal(everyday_inter){
+async function repayTotal(everyday_inter) {
     if (!Array.isArray(everyday_inter)) {
         throw new Error('请传入一个数组')
     }
     let repay_total = 0
-    for(let i = 0;i<everyday_inter.length;i++){
-        if(dayjs(everyday_inter[i].date).isBefore(dayjs())){
+    for (let i = 0; i < everyday_inter.length; i++) {
+        if (dayjs(everyday_inter[i].date).isBefore(dayjs())) {
             repay_total = parseInt(repay_total) + parseInt(everyday_inter[i].repay_plan)
-        }else{
+        } else {
             break
         }
     }
     return repay_total
+}
+//生成每日结息详情
+const createInterInfo = async (date, inter_plan, inter_first_date, limit,rate,is_float_rate) => {
+    let start = dayjs(date)
+    const endDate = start.add(limit, 'month').subtract(1, 'day')
+    console.log(start.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'));
+    let dateList = []
+
+    let curDate = dayjs(inter_first_date)
+    switch (inter_plan) {
+        case '每月':
+            //
+            while (curDate.isBefore(endDate)) {
+                dateList.push(curDate.format("YYYY-MM-DD"));
+                curDate = curDate.add(1, "month");
+                //console.log(endDate.format('YYYY-MM-DD'));
+            }
+            // console.log(dateList);
+            break;
+
+        case '每季度':
+            while (curDate.isBefore(endDate)) {
+                dateList.push(curDate.format("YYYY-MM-DD"));
+                curDate = curDate.add(1, "quarter");
+            }
+            // console.log(dateList);
+            break;
+        case '每半年':
+            while (curDate.isBefore(endDate)) {
+                dateList.push(curDate.format("YYYY-MM-DD"));
+                curDate = curDate.add(6, "month");
+            }
+            // console.log(dateList);
+            break;
+        case '每年':
+            while (curDate.isBefore(endDate)) {
+                dateList.push(curDate.format("YYYY-MM-DD"));
+                curDate = curDate.add(1, "year");
+            }
+            // console.log(dateList);
+            break;
+
+        default:
+
+            break;
+    }
+    //console.log(dateList);
+    let currentDate = start
+    let j = 0
+    let i = 0
+    let interList = []
+    while (!currentDate.isAfter(endDate)) {
+        let obj = {
+            princaipal: 0,
+            rate: parseFloat(rate),
+            date: currentDate.format('YYYY-MM-DD'),
+            inter_plan: 0,
+            repay_plan: 0,
+            inter_actual: 0,
+            repay_actual: 0,
+            mt_num: 0,
+            is_inter_set: 0
+        }
+
+        for (let i = j; i < dateList.length; i++) {
+            if (currentDate.isSame(dayjs(dateList[i]))) {
+                obj.is_inter_set = 1
+                j = i + 1
+                break;
+            }
+        }
+        interList.push(obj)
+        i++
+        currentDate = currentDate.add(1, 'day')
+    }
+    if(is_float_rate===1){
+        await updateRate(interList)
+    }
+    return interList
 }
 module.exports = {
     computrRepay,
@@ -238,5 +322,6 @@ module.exports = {
     updatePlan,
     updatePlanInter,
     updateInfo,
-    repayTotal
+    repayTotal,
+    createInterInfo
 }

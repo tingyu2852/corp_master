@@ -68,6 +68,7 @@ const finaStr = {
     proj_basice.update_time,
     proj_basice.creat_time,
     proj_basice.hidden_debt,
+    proj_basice.proj_node,
     rep_info.rep_date,
     COALESCE((SELECT  COALESCE(SUM(rep_sum), 0) FROM rep_info AS t1 WHERE t1.proj_id =proj_basice.proj_id)) AS rep_total,
     COALESCE(SUM(mt_info.mt_sum),0) AS mt_total
