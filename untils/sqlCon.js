@@ -20,12 +20,22 @@ const config = {
     multipleStatements:true,
     connectionLimit: 10 // 创建一个连接池
 }
+const config2={
+    //该配置是本地的数据库
+    host: '122.112.230.57',
+    user: 'root',
+    password: 'huima@rootAdmin2022',
+    database: 'li',
+    dateStrings: true,
+    multipleStatements:true,
+    connectionLimit: 10 // 创建一个连接池
+}
   
   
   function createConnectionPool() {
     let connectionPool = null;
     if (!connectionPool) {
-      connectionPool = mysql2.createPool(config).promise();
+      connectionPool = mysql2.createPool(config2).promise();
     }
     return connectionPool;
   }

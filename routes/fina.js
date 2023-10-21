@@ -606,6 +606,7 @@ router.post('/mt', async (req, res) => {
     let { mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date, mt_id,sub_project_list } = req.body
     sub_project_list= Array.isArray(sub_project_list)? sub_project_list:[]
     sub_project_list = JSON.stringify(sub_project_list)
+    matching_capital=JSON.stringify(matching_capital)
     try {
         console.log(dayjs().format('YYYY-MM-DD HH:mm:ss.SSS'), '-------');
         let strtime = start_end_date
@@ -616,9 +617,9 @@ router.post('/mt', async (req, res) => {
                 await sql.beginTransaction()
 
                 if (mt_id) {
-                    await sql.execute(sqlstr1, [mt_sum, mt_date, matching_capital, remark, loan_id, strtime,sub_project_list, mt_id])
+                    await sql.execute(sqlstr1, [mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date,sub_project_list, mt_id])
                 } else {
-                    await sql.execute(sqlstr2, [mt_sum, mt_date, matching_capital, remark, loan_id, strtime,sub_project_list])
+                    await sql.execute(sqlstr2, [mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date,sub_project_list])
                 }
                 //更新每日结息详情
                 await updateMt(sql, loan_id)
