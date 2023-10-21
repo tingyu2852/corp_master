@@ -44,7 +44,6 @@ router.get('/proj', async (req, res) => {
 router.post('/proj', async (req, res) => {
     try {
         let { proj_name, fina_name, proj_status, corp_name, proj_remark, hidden_debt, proj_id } = req.body
-        console.log(req.body);
         proj_status = 1
 
         let data = await linkMySql(async sql => {
@@ -78,7 +77,6 @@ router.post('/proj', async (req, res) => {
                     }
                     const sqlstr = `INSERT INTO proj_basice(proj_id, proj_name, fina_name, proj_status, corp_name,creat_time,hidden_debt,proj_remark,proj_node) VALUES (?,?,?,?,?,?,?,?,?)`
                     let proj_node = 'proj'
-                    console.log(cur_proj_id);
                     cur_proj_id = cur_proj_id.toString()
                     const list = [cur_proj_id, proj_name, fina_name, proj_status, corp_name, nowTime, hidden_debt, proj_remark, proj_node]
                     let res2 = await sql.execute(sqlstr, [cur_proj_id, proj_name, fina_name, 1, corp_name, nowTime, hidden_debt, proj_remark, proj_node])
@@ -132,7 +130,6 @@ router.get('/rep', async (req, res) => {
 
 router.post('/rep', async (req, res) => {
     try {
-        console.log(req.body);
         let { bank_name, rep_sum, rep_date, rep_limit, rep_sou, proj_id, rep_remark, bank_consortium, sub_project, sub_project_list, rep_id } = req.body
         sub_project_list = Array.isArray(sub_project_list) ? JSON.stringify(sub_project_list) : '[]'
         if (rep_id) {
@@ -321,7 +318,6 @@ router.post('/loan', async (req, res) => {
         let { loan_sum, loan_date, loan_remark, rep_id, inter_plan, rep_limit, loan_id, rate, is_actual, is_float_rate, mt_total, sub_project_list, inter_first_date, proj_id } = req.body
         sub_project_list = Array.isArray(sub_project_list) ? sub_project_list : []
         sub_project_list = JSON.stringify(sub_project_list)
-        console.log(req.body);
         let data = await linkMySql(async sql => {
             try {
 

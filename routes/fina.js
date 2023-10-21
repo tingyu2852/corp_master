@@ -603,7 +603,7 @@ router.get('/mt', async (req, res) => {
 //下款信息新增或修改接口
 router.post('/mt', async (req, res) => {
 
-    let { mt_sum, mt_con_id, mt_date, matching_capital, remark, loan_id, start_end_date, mt_id,sub_project_list } = req.body
+    let { mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date, mt_id,sub_project_list } = req.body
     sub_project_list= Array.isArray(sub_project_list)? sub_project_list:[]
     sub_project_list = JSON.stringify(sub_project_list)
     try {

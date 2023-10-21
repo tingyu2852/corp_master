@@ -40,7 +40,6 @@ const sqlObj = {
         //console.log(promisePool.ended);
         let promisePool = null
         promisePool = await getpool()
-        console.log(promisePool.connection._closing, '------');
         if (promisePool.connection._closing) {
         
             promisePool = null
@@ -102,8 +101,6 @@ const sqlObj = {
             })
             return res
         } catch (error) {
-            console.log('release');
-            console.log('------------------');
             await promisePool.release(function (err) {
                 console.log(err)
             })
