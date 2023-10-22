@@ -1,4 +1,4 @@
-const { linkSql, linkSeverSql } = require('../untils/sql');
+const { linkSql, linkSeverSql, linkMySql } = require('../untils/sql');
 const dayjs = require('dayjs')
 const QuarterOfYear = require('dayjs/plugin/QuarterOfYear')
 const isSameOrBefore = require('dayjs/plugin/isSameOrBefore')
@@ -56,7 +56,7 @@ async function updateRate(everyday_inter) {
                     everyday_inter[j].rate = parseFloat((parseFloat(everyday_inter[j].rate) + parseFloat(list1[0].rate)).toFixed(5))
                     cur = j + 1
                 }
-                
+
             } else {
                 if (i === list1.length - 1) {
                     if (dayjs(everyday_inter[j].date).isSameOrAfter(dayjs(list1[0].date))) {
@@ -238,7 +238,7 @@ async function repayTotal(everyday_inter) {
     return repay_total
 }
 //生成每日结息详情
-const createInterInfo = async (date, inter_plan, inter_first_date, limit,rate,is_float_rate) => {
+const createInterInfo = async (date, inter_plan, inter_first_date, limit, rate, is_float_rate) => {
     let start = dayjs(date)
     const endDate = start.add(limit, 'month').subtract(1, 'day')
     console.log(start.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'));
@@ -311,10 +311,80 @@ const createInterInfo = async (date, inter_plan, inter_first_date, limit,rate,is
         i++
         currentDate = currentDate.add(1, 'day')
     }
-    if(is_float_rate===1){
+    if (is_float_rate === 1) {
         await updateRate(interList)
     }
     return interList
+}
+//项目分类为项目贷时生成每日结息表
+const projLoan =async (proj_id) => {
+    let data = await linkMySql(async sql=>{
+        try {
+            let repInfo = (await sql.execute(finaStr.repInfo,[proj_id]))[0][0]
+            let loanInfo = (await sql.execute(`SELECT
+            loan_info.loan_id,
+            loan_info.loan_con_id,
+            loan_info.loan_sum,
+            loan_info.loan_date,
+            loan_info.loan_remark,
+            loan_info.rep_id,
+            loan_info.inter_plan,
+            loan_info.rep_limit,
+            loan_info.is_repay,
+            loan_info.is_inter,
+            loan_info.is_float_rate,
+            loan_info.rate,
+            loan_info.is_actual,
+            loan_info.everyday_inter,
+            loan_info.sub_project_list,
+            loan_info.proj_id,
+            loan_info.inter_first_date
+            FROM
+            loan_info
+            WHERE 
+            proj_id = '${proj_id}'`))[0][0]
+            let list =await createInterInfo(repInfo.rep_date,loanInfo.inter_plan,loanInfo.inter_first_date,repInfo.rep_limit,loanInfo.rate,loanInfo.is_float_rate)
+            console.log(list.slice(0,20));
+            await repayPlan(proj_id,list)
+            return list
+        } catch (error) {
+            throw new Error
+        }
+        
+    })
+    return data
+
+}
+
+const repayPlan=async (proj_id,everyday_inter)=>{
+    let data = await linkMySql(async sql=>{
+        let repayPlan = (await sql.execute(`SELECT
+        repay_plan.repay_id,
+        repay_plan.plan_date,
+        repay_plan.repay_num,
+        repay_plan.remark,
+        repay_plan.rep_id
+        FROM
+        repay_plan
+        INNER JOIN rep_info ON repay_plan.rep_id = rep_info.rep_id
+        WHERE
+        rep_info.proj_id = '${proj_id}'`))[0]
+        
+        for (let j = 0; j < everyday_inter.length; j++) {
+            //everyday_inter[j].rate = parseFloat(loanInfo[0].rate)
+            everyday_inter[j].mt_num = 0
+            for (let i = 0; i < repayPlan.length; i++) {
+                if (dayjs(everyday_inter[j].date).isSame(repayPlan[i].plan_date)) {
+                    everyday_inter[j].repay_plan += repayPlan[i].repay_num
+                    
+                }
+            }
+           
+
+
+        }
+    })
+
 }
 module.exports = {
     computrRepay,
@@ -323,5 +393,6 @@ module.exports = {
     updatePlanInter,
     updateInfo,
     repayTotal,
-    createInterInfo
+    createInterInfo,
+    projLoan
 }

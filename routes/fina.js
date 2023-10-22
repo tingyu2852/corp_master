@@ -145,7 +145,6 @@ router.post('/proj', async (req, res) => {
                 } catch (error) {
                     console.log(error);
                     await sql.rollback()
-                    //await sql.release()
                     throw new Error(error)
                 }
             })
@@ -184,7 +183,6 @@ router.get('/info', async (req, res) => {
                     } catch (error) {
                         console.log(error);
                         await sql.rollback()
-                        await sql.release()
                         throw new Error(error)
                     }
                 })
@@ -253,16 +251,10 @@ router.get('/select', async (req, res) => {
                     finaCate: finaCate[0],
                     agmtList: agmtList[0]
                 }
-                await sql.release(err => {
-                    console.log(err);
-                })
                 return obj
 
             } catch (err) {
                 console.log(err);
-                await sql.release(err => {
-
-                })
                 return false
             }
         })
@@ -317,7 +309,6 @@ router.post('/rep', async (req, res) => {
             } catch (error) {
                 console.log(error);
                 await sql.rollback()
-                await sql.release()
                 throw new Error(error)
             }
 
@@ -481,7 +472,6 @@ router.post('/loan', async (req, res) => {
             } catch (error) {
                 console.log(error);
                 await sql.rollback()
-                await sql.release()
                 throw new Error('错误')
             }
         })
@@ -526,7 +516,6 @@ router.delete('/loan', async (req, res) => {
                 }
             } catch (error) {
                 await sql.rollback()
-                await sql.release()
                 throw new Error(error)
             }
         })

@@ -3,7 +3,7 @@ const { linkSql, linkMySql } = require('../untils/sql');
 const finaStr = require('../untils/finaStr')
 var router = express.Router();
 var dayjs = require('dayjs');
-const { computrRepay, updateRate, updatePlan, updatePlanInter, updateInfo, repayTotal, createInterInfo } = require('../untils/updateInter')
+const { computrRepay, updateRate, updatePlan, updatePlanInter, updateInfo, repayTotal, createInterInfo,projLoan } = require('../untils/updateInter')
 var isSameOrBefore = require('dayjs/plugin/isSameOrBefore')
 // import isSameOrBefore from 'dayjs/plugin/isSameOrBefore' // ES 2015
 const isBetween = require('dayjs/plugin/isBetween')
@@ -362,7 +362,6 @@ router.post('/loan', async (req, res) => {
             } catch (error) {
                 console.log(error);
                 await sql.rollback()
-                await sql.release()
                 throw new Error('错误')
             }
         })
@@ -515,29 +514,32 @@ router.get('/sp', async (req, res) => {
 })
 router.get('/next', async (req, res) => {
     try {
-        let { id, name,proj_id } = req.query
+        let { id, name, proj_id } = req.query
 
         switch (name) {
             case 'end':
                 let data = await linkSql(`UPDATE proj_basice SET proj_node = 'end' WHERE proj_id = '${proj_id}'`)
                 break;
             case 'proj':
-                 await linkSql(`UPDATE proj_basice SET proj_node = 'proj_${id}' WHERE proj_id = '${id}'`)
+                await linkSql(`UPDATE proj_basice SET proj_node = 'proj_${id}' WHERE proj_id = '${id}'`)
                 break;
             case 'rep':
-                 await linkSql(`UPDATE proj_basice SET proj_node = 'rep_${id}' WHERE proj_id = '${id}'`)
+                await linkSql(`UPDATE proj_basice SET proj_node = 'rep_${id}' WHERE proj_id = '${id}'`)
                 break;
-                case 'other':
-                 await linkSql(`UPDATE proj_basice SET proj_node = 'other_${id}' WHERE proj_id = '${id}'`)
+            case 'repay':
+                await linkSql(`UPDATE proj_basice SET proj_node = 'repay_${id}' WHERE proj_id = '${id}'`)
                 break;
-                case 'loan':
-                 await linkSql(`UPDATE proj_basice SET proj_node = 'loan_${id}' WHERE proj_id = '${id}'`)
+            case 'other':
+                await linkSql(`UPDATE proj_basice SET proj_node = 'other_${id}' WHERE proj_id = '${id}'`)
                 break;
-                case 'mt':
-                 await linkSql(`UPDATE proj_basice SET proj_node = 'mt_${id}' WHERE proj_id = '${proj_id}'`)
+            case 'loan':
+                await linkSql(`UPDATE proj_basice SET proj_node = 'loan_${id}' WHERE proj_id = '${id}'`)
                 break;
-                case 'sp':
-                 await linkSql(`UPDATE proj_basice SET proj_node = 'sp_${id}' WHERE proj_id = '${proj_id}'`)
+            case 'mt':
+                await linkSql(`UPDATE proj_basice SET proj_node = 'mt_${id}' WHERE proj_id = '${proj_id}'`)
+                break;
+            case 'sp':
+                await linkSql(`UPDATE proj_basice SET proj_node = 'sp_${id}' WHERE proj_id = '${proj_id}'`)
                 break;
 
             default:
@@ -550,4 +552,88 @@ router.get('/next', async (req, res) => {
 
 
 })
+
+
+router.get('/repay', async (req, res) => {
+    try {
+        let { proj_id } = req.query
+        let data = await linkMySql(async sql => {
+            try {
+                let repInfo = (await sql.execute(`SELECT
+                rep_info.rep_id,
+                rep_info.bank_name,
+                rep_info.rep_sum,
+                rep_info.rep_date,
+                rep_info.rep_limit,
+                rep_info.rep_sou,
+                rep_info.proj_id,
+                rep_info.rep_remark,
+                rep_info.Interest_settlement,
+                rep_info.rep_remaining,
+                rep_info.loan_total,
+                rep_info.bank_consortium,
+                rep_info.sub_project,
+                rep_info.sub_project_list
+                FROM
+                rep_info
+                WHERE
+                proj_id=${proj_id}
+                `))[0]
+                let list = []
+                if (repInfo.length > 0) {
+                    let repayList = (await sql.execute(`SELECT
+                repay_plan.repay_id,
+                repay_plan.plan_date,
+                repay_plan.repay_num,
+                repay_plan.remark,
+                repay_plan.rep_id
+                FROM
+                repay_plan
+                WHERE
+                rep_id = ${repInfo[0].rep_id}`))[0]
+                    list = repayList
+                }
+                return {
+                    repInfo: repInfo[0],
+                    repayList: list
+                }
+            } catch (error) {
+                throw new Error(error)
+            }
+        })
+        res.send({ code: 20000, data: { repInfo: data.repInfo, repayList: data.repayList } })
+    } catch (error) {
+        console.log(error);
+        return resError(res)
+    }
+
+})
+router.post('/repay', async (req, res) => {
+    try {
+        let { plan_date, remark, rep_id, repay_id, repay_num } = req.body
+        if (repay_id) {
+            await linkSql(`UPDATE repay_plan SET plan_date = ?, repay_num = ?, remark = ? WHERE repay_id = ?`, [plan_date, repay_num, remark, repay_id])
+        } else {
+            let data = await linkSql(`INSERT INTO repay_plan(plan_date, repay_num, remark, rep_id) VALUES (?, ?, ?, ?)`, [plan_date, repay_num, remark, rep_id])
+        }
+        res.send({ code: 20000, message: '操作成功' })
+    } catch (error) {
+        console.log(error);
+        return resError(res)
+    }
+})
+
+router.get('/every',async(req,res)=>{
+    try {
+        let {proj_id}=req.query
+       let list = await projLoan(proj_id)
+       res.send({ code: 20000,data:{list}, message: '操作成功' })
+    } catch (error) {
+        return resError(res)
+    }
+})
+
+const resError = (res) => {
+    res.send({ code: 20001, message: '错误' })
+}
 module.exports = router;
