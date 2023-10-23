@@ -76,11 +76,11 @@ router.post('/proj', async (req, res) => {
                         cur_proj_id = parseInt(proj_ids[0].proj_id) + 1
                         // console.log(JSON.stringify({cur_proj_id, proj_name, fina_name, proj_status, corp_name, nowTime, hidden_debt, proj_remark}));
                     }
-                    const sqlstr = `INSERT INTO proj_basice(proj_id, proj_name, fina_name, proj_status, corp_name,creat_time,hidden_debt,proj_remark,proj_node) VALUES (?,?,?,?,?,?,?,?,?)`
+                    const sqlstr = `INSERT INTO proj_basice(proj_id, proj_name, fina_name, proj_status, corp_name,creat_time,hidden_debt,proj_remark) VALUES (?,?,?,?,?,?,?,?)`
                     let proj_node = 'proj'
                     cur_proj_id = cur_proj_id.toString()
                     const list = [cur_proj_id, proj_name, fina_name, proj_status, corp_name, nowTime, hidden_debt, proj_remark, proj_node]
-                    let res2 = await sql.execute(sqlstr, [cur_proj_id, proj_name, fina_name, 1, corp_name, nowTime, hidden_debt, proj_remark, proj_node])
+                    let res2 = await sql.execute(sqlstr, [cur_proj_id, proj_name, fina_name, 1, corp_name, nowTime, hidden_debt, proj_remark])
                     //console.log(res1);
 
 
@@ -145,7 +145,6 @@ router.post('/rep', async (req, res) => {
                     everyday_inter = JSON.stringify(everyday_inter)
                     let repStr = `INSERT INTO rep_info(bank_name, rep_sum, rep_date, rep_limit, rep_sou, proj_id, rep_remark,rep_remaining,bank_consortium,sub_project,sub_project_list,everyday_inter) VALUES (?, ?, ?, ?, ?, ?, ?,?,?,?,?,?)`
                     await sql.execute(repStr, [bank_name, rep_sum, rep_date, rep_limit, rep_sou, proj_id, rep_remark, rep_sum, bank_consortium, sub_project, sub_project_list, everyday_inter])
-                    await sql.execute(`UPDATE proj_basice SET proj_node = 'rep' WHERE proj_id = '${proj_id}'`)
                     await sql.commit()
                 } catch (error) {
                     sql.rollback()
@@ -459,16 +458,16 @@ router.post('/mt', async (req, res) => {
     try {
         // console.log(dayjs().format('YYYY-MM-DD HH:mm:ss.SSS'), '-------');
         let strtime = start_end_date
-        const sqlstr1 = `UPDATE mt_info SET mt_sum = ?,  mt_date = ?, matching_capital = ?, remark = ?, loan_id = ?, start_end_date = ? ,sub_project_list=? WHERE mt_id = ?`
-        const sqlstr2 = `INSERT INTO mt_info(mt_sum, mt_date, matching_capital, remark, loan_id,start_end_date,sub_project_list) VALUES ( ?, ?, ?, ?, ?,?,?)`
+        const sqlstr1 = `UPDATE mt_info SET mt_sum = ?,  mt_date = ?, matching_capital = ?, remark = ?, loan_id = ?, start_end_date = ? ,sub_project_list=?,proj_id=? WHERE mt_id = ?`
+        const sqlstr2 = `INSERT INTO mt_info(mt_sum, mt_date, matching_capital, remark, loan_id,start_end_date,sub_project_list,proj_id) VALUES ( ?, ?, ?, ?, ?,?,?,?)`
         let res1 = await linkMySql(async sql => {
             try {
                 await sql.beginTransaction()
 
                 if (mt_id) {
-                    await sql.execute(sqlstr1, [mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date, sub_project_list, mt_id])
+                    await sql.execute(sqlstr1, [mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date, sub_project_list,proj_id, mt_id])
                 } else {
-                    await sql.execute(sqlstr2, [mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date, sub_project_list])
+                    await sql.execute(sqlstr2, [mt_sum, mt_date, matching_capital, remark, loan_id, start_end_date, sub_project_list,proj_id])
                 }
                 //更新每日结息详情
                await interCommputed.updateMtInter(sql,proj_id)
@@ -582,7 +581,6 @@ router.get('/next', async (req, res) => {
         switch (name) {
             case 'end':
                 //let data = await linkSql(`UPDATE proj_basice SET proj_node = 'end' WHERE proj_id = '${proj_id}'`)
-                console.log(req.query);
                 await interCommputed.computedInter(proj_id)
                 break;
             case 'proj':
@@ -596,7 +594,6 @@ router.get('/next', async (req, res) => {
                 break;
             case 'other':
                 await linkSql(`UPDATE proj_basice SET proj_node = 'other_${id}' WHERE proj_id = '${id}'`)
-                await interCommputed.repayPlan(id)
                 break;
             case 'loan':
                 await linkSql(`UPDATE proj_basice SET proj_node = 'loan_${id}' WHERE proj_id = '${id}'`)
@@ -688,7 +685,17 @@ router.post('/repay', async (req, res) => {
         return resError(res)
     }
 })
-
+router.delete('/repay', async (req, res) => {
+    try {
+        let { proj_id, repay_id } = req.body
+        await linkSql( `DELETE FROM repay_plan WHERE repay_id = ${repay_id} `)
+        await interCommputed.repayPlan(proj_id)
+        res.send({ code: 20000, message: '操作成功' })
+    } catch (error) {
+        console.log(error);
+        return resError(res)
+    }
+})
 router.get('/every', async (req, res) => {
     try {
         let { proj_id } = req.query
@@ -701,7 +708,16 @@ router.get('/every', async (req, res) => {
         return resError(res)
     }
 })
-
+router.get('/update',async(req,res)=>{
+   try {
+    let {proj_id}=req.query
+    await interCommputed.computedInter(proj_id)
+    res.send({code:20000,message:'成功'})
+   } catch (error) {
+   return resError(res)
+   }
+    
+})
 const resError = (res) => {
     res.send({ code: 20001, message: '错误' })
 }

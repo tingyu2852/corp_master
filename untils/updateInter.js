@@ -154,7 +154,6 @@ async function updateInfo(everyday_inter, rate, is_float_rate) {
     if (!Array.isArray(everyday_inter)) {
         throw new Error('请传入一个数组')
     }
-    console.log(rate, is_float_rate);
     if (is_float_rate === 1) {
         let list1 = await linkSql(`SELECT
         rate_info.rate_id,
@@ -241,7 +240,6 @@ async function repayTotal(everyday_inter) {
 const createInterInfo = async (date, inter_plan, inter_first_date, limit, rate, is_float_rate) => {
     let start = dayjs(date)
     const endDate = start.add(limit, 'month').subtract(1, 'day')
-    console.log(start.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'));
     let dateList = []
 
     let curDate = dayjs(inter_first_date)
@@ -381,7 +379,7 @@ const repayPlan = async (proj_id) => {
             let cur = 0
             for (let j = 0; j < repInfo.everyday_inter.length; j++) {
                 //repInfo.everyday_inter[j].rate = parseFloat(loanInfo[0].rate)
-                repInfo.everyday_inter[j].repay_num = 0
+                repInfo.everyday_inter[j].repay_plan = 0
                 for (let i = cur; i < repayPlan.length; i++) {
                     if (dayjs(repInfo.everyday_inter[j].date).isSame(repayPlan[i].plan_date)) {
                         repInfo.everyday_inter[j].repay_plan += repayPlan[i].repay_num
@@ -392,7 +390,6 @@ const repayPlan = async (proj_id) => {
 
 
             }
-            console.log('-=-=');
             repInfo.everyday_inter = JSON.stringify(repInfo.everyday_inter)
             await sql.execute(`UPDATE rep_info SET everyday_inter = ? WHERE proj_id = ?`, [repInfo.everyday_inter, proj_id])
             await sql.commit()
@@ -480,7 +477,7 @@ const computedInter = async (proj_id) => {
     let data = await linkMySql(async sql => {
         try {
             await sql.beginTransaction()
-
+            await repayPlan(proj_id)
             let loan_info = (await sql.execute(`SELECT
             loan_info.loan_id,
             loan_info.loan_sum,
@@ -564,7 +561,6 @@ const computedInter = async (proj_id) => {
                     }
                 }
             } else {
-                console.log(repInfo.everyday_inter[0], 'repInfo.everyday_inter[j].mt_num');
                 for (let j = 0; j < repInfo.everyday_inter.length; j++) {
                     repInfo.everyday_inter[j].rate = loan_info.rate
                     if (j !== 0) {
@@ -630,7 +626,6 @@ const computedInter = async (proj_id) => {
                         repInfo.everyday_inter[a].is_inter_set = 1
                         ja = i + 1
                         repInfo.everyday_inter[a].inter_actual = total
-                        console.log(total);
                         total = 0
                         break;
                     }
