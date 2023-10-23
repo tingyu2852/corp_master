@@ -1078,7 +1078,8 @@ router.get('/shuaxin', async (req, res) => {
 })
 //获取结息计划时间节点
 router.get('/plan', async (req, res) => {
-    let { loan_id, current, size } = req.query
+    try {
+        let { loan_id, current, size } = req.query
     current = parseInt(current)
     size = parseInt(size)
 
@@ -1096,20 +1097,27 @@ router.get('/plan', async (req, res) => {
     repay_info.date ASC
     LIMIT ?,? `
 
-
-    let data = await linkSql(`SELECT
-    loan_info.loan_sum,
-    loan_info.loan_date,
-    loan_info.loan_remark,
-    loan_info.is_float_rate,
-    loan_info.rate,
-    loan_info.everyday_inter,
+   
+    // let data = await linkSql(`SELECT
+    // loan_info.loan_sum,
+    // loan_info.loan_date,
+    // loan_info.loan_remark,
+    // loan_info.is_float_rate,
+    // loan_info.rate,
+    // loan_info.everyday_inter,
+    // rep_info.rep_limit
+    // FROM
+    // loan_info
+    // LEFT JOIN rep_info ON loan_info.rep_id = rep_info.rep_id
+    // WHERE
+    // loan_id = ${loan_id}`)
+    let data = await linkSql(` SELECT
+    rep_info.everyday_inter,
+    rep_info.rep_date,
     rep_info.rep_limit
     FROM
-    loan_info
-    LEFT JOIN rep_info ON loan_info.rep_id = rep_info.rep_id
-    WHERE
-    loan_id = ${loan_id}`)
+    rep_info
+    WHERE rep_info.proj_id = '2023012'`)
     let { everyday_inter } = data[0]
     let list1 = everyday_inter.filter(item => {
         return item.is_inter_set === 1
@@ -1129,8 +1137,11 @@ router.get('/plan', async (req, res) => {
     repay_info.date ASC
     
     `
-    let total = await linkSql(str, [loan_id])
+    //let total = await linkSql(str, [loan_id])
     res.send({ code: 20000, data: { planList: list, total: list1.length } })
+    } catch (error) {
+        res.send({code:20001,message:'错误'})
+    }
 })
 
 //添加结息计划

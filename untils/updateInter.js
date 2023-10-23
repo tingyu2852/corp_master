@@ -17,7 +17,7 @@ async function computrRepay(everyday_inter) {
     }
     for (let j = 0; j < everyday_inter.length; j++) {
         if (j !== 0) {
-            //everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal + everyday_inter[j - 1].mt_num - everyday_inter[j - 1].repay_plan
+
             everyday_inter[j].princaipal = everyday_inter[j - 1].princaipal - everyday_inter[j - 1].repay_plan + everyday_inter[j].mt_num
 
         } else {
@@ -308,7 +308,7 @@ const createInterInfo = async (date, inter_plan, inter_first_date, limit, rate, 
             }
         }
         interList.push(obj)
-        i++
+
         currentDate = currentDate.add(1, 'day')
     }
     if (is_float_rate === 1) {
@@ -316,14 +316,173 @@ const createInterInfo = async (date, inter_plan, inter_first_date, limit, rate, 
     }
     return interList
 }
+
 //项目分类为项目贷时生成每日结息表
-const projLoan =async (proj_id) => {
-    let data = await linkMySql(async sql=>{
+// const projLoan = async (proj_id) => {
+//     let data = await linkMySql(async sql => {
+//         try {
+//             let repInfo = (await sql.execute(finaStr.repInfo, [proj_id]))[0][0]
+//             let loanInfo = (await sql.execute(`SELECT
+//             loan_info.loan_id,
+//             loan_info.loan_con_id,
+//             loan_info.loan_sum,
+//             loan_info.loan_date,
+//             loan_info.loan_remark,
+//             loan_info.rep_id,
+//             loan_info.inter_plan,
+//             loan_info.rep_limit,
+//             loan_info.is_repay,
+//             loan_info.is_inter,
+//             loan_info.is_float_rate,
+//             loan_info.rate,
+//             loan_info.is_actual,
+//             loan_info.everyday_inter,
+//             loan_info.sub_project_list,
+//             loan_info.proj_id,
+//             loan_info.inter_first_date
+//             FROM
+//             loan_info
+//             WHERE 
+//             proj_id = '${proj_id}'`))[0][0]
+//             let list = await createInterInfo(repInfo.rep_date, loanInfo.inter_plan, loanInfo.inter_first_date, repInfo.rep_limit, loanInfo.rate, loanInfo.is_float_rate)
+//             console.log(list.slice(0, 20));
+//             await repayPlan(proj_id, list)
+//             return list
+//         } catch (error) {
+//             throw new Error
+//         }
+
+//     })
+//     return data
+
+// }
+
+const repayPlan = async (proj_id) => {
+    let data = await linkMySql(async sql => {
         try {
-            let repInfo = (await sql.execute(finaStr.repInfo,[proj_id]))[0][0]
-            let loanInfo = (await sql.execute(`SELECT
+            await sql.beginTransaction()
+            let repayPlan = (await sql.execute(`SELECT
+        repay_plan.repay_id,
+        repay_plan.plan_date,
+        repay_plan.repay_num,
+        repay_plan.remark,
+        repay_plan.rep_id
+        FROM
+        repay_plan
+        INNER JOIN rep_info ON repay_plan.rep_id = rep_info.rep_id
+        WHERE
+        rep_info.proj_id = '${proj_id}'`))[0]
+            let repInfo = (await sql.execute(`SELECT
+        rep_info.everyday_inter
+        FROM
+        rep_info
+        WHERE rep_info.proj_id = ${proj_id}
+        `))[0][0]
+            let cur = 0
+            for (let j = 0; j < repInfo.everyday_inter.length; j++) {
+                //repInfo.everyday_inter[j].rate = parseFloat(loanInfo[0].rate)
+                repInfo.everyday_inter[j].repay_num = 0
+                for (let i = cur; i < repayPlan.length; i++) {
+                    if (dayjs(repInfo.everyday_inter[j].date).isSame(repayPlan[i].plan_date)) {
+                        repInfo.everyday_inter[j].repay_plan += repayPlan[i].repay_num
+                        cur = i + 1
+                    }
+                }
+
+
+
+            }
+            console.log('-=-=');
+            repInfo.everyday_inter = JSON.stringify(repInfo.everyday_inter)
+            await sql.execute(`UPDATE rep_info SET everyday_inter = ? WHERE proj_id = ?`, [repInfo.everyday_inter, proj_id])
+            await sql.commit()
+        } catch (error) {
+            await sql.rollback()
+            throw new Error(error)
+        }
+    })
+
+}
+//项目分类为项目贷时生成每日结息表
+const projEver = (date, limit) => {
+    let start = dayjs(date)
+    const endDate = start.add(limit, 'month').subtract(1, 'day')
+    let currentDate = start
+    let interList = []
+    while (!currentDate.isAfter(endDate)) {
+        let obj = {
+            princaipal: 0,
+            rate: 0,
+            date: currentDate.format('YYYY-MM-DD'),
+            inter_plan: 0,
+            repay_plan: 0,
+            inter_actual: 0,
+            repay_actual: 0,
+            mt_num: 0,
+            is_inter_set: 0
+        }
+
+
+        interList.push(obj)
+        currentDate = currentDate.add(1, 'day')
+    }
+    return interList
+}
+//下款发生改变时更新结息详情表
+const updateMtInter = async (sql, proj_id) => {
+    let mtList = (await sql.execute(`SELECT
+    mt_info.mt_id,
+    mt_info.mt_sum,
+    mt_info.mt_date,
+    mt_info.matching_capital,
+    mt_info.remark,
+    mt_info.loan_id,
+    mt_info.start_end_date,
+    mt_info.sub_project_list
+    FROM
+    mt_info
+    INNER JOIN loan_info ON mt_info.loan_id = loan_info.loan_id
+    WHERE
+    loan_info.proj_id = '${proj_id}'
+    ORDER BY
+    mt_info.mt_date ASC`))[0]
+    let repInfo = (await sql.execute(`SELECT
+    rep_info.everyday_inter
+    FROM
+    rep_info
+    WHERE rep_info.proj_id = ${proj_id}
+    `))[0][0]
+
+
+    let cur = 0
+    const len = mtList.leng - 1
+    for (let j = 0; j < repInfo.everyday_inter.length; j++) {
+        repInfo.everyday_inter[j].mt_num = 0
+        for (let i = cur; i < mtList.length; i++) {
+            if (dayjs(repInfo.everyday_inter[j].date).isSame(mtList[i].mt_date)) {
+                repInfo.everyday_inter[j].mt_num += mtList[i].mt_sum
+                cur = i + 1
+                if (i < len) {
+                    if (dayjs(repInfo.everyday_inter[j].date).isSame(mtList[i].mt_date)) {
+                        break
+                    }
+                }
+
+            }
+        }
+
+    }
+    repInfo.everyday_inter = JSON.stringify(repInfo.everyday_inter)
+    await sql.execute(`UPDATE rep_info SET everyday_inter = ? WHERE proj_id = ?`, [repInfo.everyday_inter, proj_id])
+}
+
+const computedInter = async (proj_id) => {
+    let data = await linkMySql(async sql => {
+        try {
+            await sql.beginTransaction()
+
+            let loan_info = (await sql.execute(`SELECT
             loan_info.loan_id,
-            loan_info.loan_con_id,
             loan_info.loan_sum,
             loan_info.loan_date,
             loan_info.loan_remark,
@@ -335,56 +494,159 @@ const projLoan =async (proj_id) => {
             loan_info.is_float_rate,
             loan_info.rate,
             loan_info.is_actual,
-            loan_info.everyday_inter,
-            loan_info.sub_project_list,
             loan_info.proj_id,
             loan_info.inter_first_date
             FROM
             loan_info
-            WHERE 
-            proj_id = '${proj_id}'`))[0][0]
-            let list =await createInterInfo(repInfo.rep_date,loanInfo.inter_plan,loanInfo.inter_first_date,repInfo.rep_limit,loanInfo.rate,loanInfo.is_float_rate)
-            console.log(list.slice(0,20));
-            await repayPlan(proj_id,list)
-            return list
-        } catch (error) {
-            throw new Error
-        }
-        
-    })
-    return data
+            WHERE
+            loan_info.proj_id = '${proj_id}'
+            LIMIT 0, 1
+            `
+            ))[0][0]
+            let repInfo = (await sql.execute(`SELECT
+            rep_info.everyday_inter,
+            rep_info.rep_date,
+            rep_info.rep_limit
+            FROM
+            rep_info
+            WHERE rep_info.proj_id = '${proj_id}'
+            `))[0][0]
 
-}
+            if (loan_info.is_float_rate === 1) {
+                let list1 = (await sql.execute(`SELECT
+                rate_info.rate_id,
+                rate_info.date,
+                rate_info.rate,
+                rate_info.remark
+                FROM
+                rate_info
+                ORDER BY
+                rate_info.date ASC
+                
+                `))[0]
 
-const repayPlan=async (proj_id,everyday_inter)=>{
-    let data = await linkMySql(async sql=>{
-        let repayPlan = (await sql.execute(`SELECT
-        repay_plan.repay_id,
-        repay_plan.plan_date,
-        repay_plan.repay_num,
-        repay_plan.remark,
-        repay_plan.rep_id
-        FROM
-        repay_plan
-        INNER JOIN rep_info ON repay_plan.rep_id = rep_info.rep_id
-        WHERE
-        rep_info.proj_id = '${proj_id}'`))[0]
-        
-        for (let j = 0; j < everyday_inter.length; j++) {
-            //everyday_inter[j].rate = parseFloat(loanInfo[0].rate)
-            everyday_inter[j].mt_num = 0
-            for (let i = 0; i < repayPlan.length; i++) {
-                if (dayjs(everyday_inter[j].date).isSame(repayPlan[i].plan_date)) {
-                    everyday_inter[j].repay_plan += repayPlan[i].repay_num
-                    
+                let cur = 0
+                //console.log(list1);
+                for (let i = 0; i < list1.length; i++) {
+                    // console.log(list1[i].date);
+                    for (let j = cur; j < repInfo.everyday_inter.length; j++) {
+                        //cur=j+1
+                        if (list1.length === 1) {
+                            if (dayjs(repInfo.everyday_inter[j].date).isSameOrAfter(dayjs(list1[0].date))) {
+                                repInfo.everyday_inter[j].rate = parseFloat((parseFloat(loan_info.rate) + parseFloat(list1[0].rate)).toFixed(5))
+                                cur = j + 1
+                            }
+
+                        } else {
+                            if (i === list1.length - 1) {
+                                if (dayjs(repInfo.everyday_inter[j].date).isSameOrAfter(dayjs(list1[0].date))) {
+                                    //console.log(repInfo.everyday_inter[j].rate);
+                                    repInfo.everyday_inter[j].rate = parseFloat((parseFloat(loan_info.rate) + parseFloat(list1[i].rate)).toFixed(5))
+                                    cur = j + 1
+
+                                }
+                            } else {
+                                if (dayjs(repInfo.everyday_inter[j].date).isBetween(dayjs(list1[i].date), dayjs(list1[i + 1].date), '[)')) {
+                                    repInfo.everyday_inter[j].rate = parseFloat((parseFloat(loan_info.rate) + parseFloat(list1[i].rate)).toFixed(5))
+                                    cur = j + 1
+                                }
+                            }
+                        }
+                        if (j !== 0) {
+
+                            repInfo.everyday_inter[j].princaipal = repInfo.everyday_inter[j - 1].princaipal - repInfo.everyday_inter[j - 1].repay_plan + repInfo.everyday_inter[j].mt_num
+
+                        } else {
+                            repInfo.everyday_inter[j].princaipal = repInfo.everyday_inter[j].mt_num
+                        }
+                        repInfo.everyday_inter[j].inter_plan = parseFloat(((repInfo.everyday_inter[j].princaipal * parseFloat(repInfo.everyday_inter[j].rate)) / (dayjs(repInfo.everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
+
+                    }
+                }
+            } else {
+                console.log(repInfo.everyday_inter[0], 'repInfo.everyday_inter[j].mt_num');
+                for (let j = 0; j < repInfo.everyday_inter.length; j++) {
+                    repInfo.everyday_inter[j].rate = loan_info.rate
+                    if (j !== 0) {
+
+                        repInfo.everyday_inter[j].princaipal = repInfo.everyday_inter[j - 1].princaipal - repInfo.everyday_inter[j - 1].repay_plan + repInfo.everyday_inter[j].mt_num
+
+                    } else {
+
+                        repInfo.everyday_inter[j].princaipal = repInfo.everyday_inter[j].mt_num
+                    }
+                    repInfo.everyday_inter[j].inter_plan = parseFloat(((repInfo.everyday_inter[j].princaipal * parseFloat(repInfo.everyday_inter[j].rate)) / (dayjs(repInfo.everyday_inter[j].date).isLeapYear() ? 366 : 365)).toFixed(2))
                 }
             }
-           
 
+            let start = dayjs(repInfo.rep_date)
+            const endDate = start.add(repInfo.rep_limit, 'month').subtract(1, 'day')
+            let dateList = []
 
+            let curDate = dayjs(loan_info.inter_first_date)
+            switch (loan_info.inter_plan) {
+                case '每月':
+                    //
+                    while (curDate.isBefore(endDate)) {
+                        dateList.push(curDate.format("YYYY-MM-DD"));
+                        curDate = curDate.add(1, "month");
+                        //console.log(endDate.format('YYYY-MM-DD'));
+                    }
+                    // console.log(dateList);
+                    break;
+
+                case '每季度':
+                    while (curDate.isBefore(endDate)) {
+                        dateList.push(curDate.format("YYYY-MM-DD"));
+                        curDate = curDate.add(1, "quarter");
+                    }
+                    // console.log(dateList);
+                    break;
+                case '每半年':
+                    while (curDate.isBefore(endDate)) {
+                        dateList.push(curDate.format("YYYY-MM-DD"));
+                        curDate = curDate.add(6, "month");
+                    }
+                    // console.log(dateList);
+                    break;
+                case '每年':
+                    while (curDate.isBefore(endDate)) {
+                        dateList.push(curDate.format("YYYY-MM-DD"));
+                        curDate = curDate.add(1, "year");
+                    }
+                    // console.log(dateList);
+                    break;
+
+                default:
+
+                    break;
+            }
+            let ja = 0
+            let total = 0
+            for (let a = 0; a < repInfo.everyday_inter.length; a++) {
+                total = parseFloat((total + repInfo.everyday_inter[a].inter_plan).toFixed(2))
+                for (let i = ja; i < dateList.length; i++) {
+                    if (dayjs(repInfo.everyday_inter[a].date).isSame(dayjs(dateList[i]))) {
+                        repInfo.everyday_inter[a].is_inter_set = 1
+                        ja = i + 1
+                        repInfo.everyday_inter[a].inter_actual = total
+                        console.log(total);
+                        total = 0
+                        break;
+                    }
+                }
+            }
+            //repInfo.everyday_inter
+            everyday_inter = JSON.stringify(repInfo.everyday_inter)
+            await sql.execute(`UPDATE rep_info SET everyday_inter = ? WHERE proj_id = ?`, [repInfo.everyday_inter, proj_id])
+            await sql.execute(`UPDATE proj_basice SET proj_node = 'end' WHERE proj_id = '${proj_id}'`)
+            await sql.commit()
+        } catch (error) {
+            console.log(error);
+            await sql.rollback()
+            throw new Error(error)
         }
     })
-
 }
 module.exports = {
     computrRepay,
@@ -394,5 +656,9 @@ module.exports = {
     updateInfo,
     repayTotal,
     createInterInfo,
-    projLoan
+    //projLoan,
+    projEver,
+    repayPlan,
+    updateMtInter,
+    computedInter
 }
